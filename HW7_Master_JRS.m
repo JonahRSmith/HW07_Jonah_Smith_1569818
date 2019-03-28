@@ -11,6 +11,7 @@
 
 clc;
 clear all;
+close all;
 
 %Part 1 - Done in Word
 %Part 2 - Done below
@@ -36,44 +37,38 @@ uprev = u; %uprev holds the solution for u at the previous timestep
 TIMEN = TIMEO; %Current time
 CONST = D*dt/2/dx/dx; %Constant appearing many times through code
 DNODES = length(x); %Number of diffusion nodes (i.e. not boundary nodes)
-figure(1);
-ct=0;
 while (TIMEN < TIMEND)
-    ct = ct+1;
     %Forward through the tri-diagonal!
-    alpha = zeros(DNODES);
-    g = zeros(DNODES);
+    alpha = zeros(DNODES,1);
+    g = zeros(DNODES,1);
     a = (1 + 2*CONST); %constant in all rows here
-    b = -CONST; %Constant, except where undefined in row(1)
-    c = -CONST; %Constant, except where undefined in row(DNODES)
-    alpha(1) = 1 + 2*CONST;
+    b = -CONST*ones(DNODES,1); b(1)=0;
+    c = -CONST*ones(DNODES,1); c(DNODES)=0;
+    alpha(1) = a;
     g(1) = uprev(1) + CONST*(2*g0 - 2*uprev(1) + uprev(2));
     for j=2:DNODES-1
-        alpha(j) = a - (b*c)/alpha(j-1);
-        g(j) = (uprev(j) + CONST*(uprev(j-1) - 2*uprev(j) + uprev(j+1))) - (b*g(j-1)/alpha(j-1));
+        alpha(j) = a - (b(j)*c(j-1))/alpha(j-1);
+        g(j) = (uprev(j) + CONST*(uprev(j-1) - 2*uprev(j) + uprev(j+1))) - (b(j)*g(j-1)/alpha(j-1));
     end
-    alpha(DNODES) = a - (b*c)/alpha(j-1);
-    g(DNODES) = uprev(DNODES) + CONST*(uprev(DNODES-1) - 2*uprev(DNODES) + 2*gL);
+    alpha(DNODES) = a - (b(j)*c(j-1))/alpha(j-1);
+    g(DNODES) = (uprev(DNODES) + CONST*(uprev(DNODES-1) - 2*uprev(DNODES) + 2*gL)) - (b(j)*g(DNODES-1)/alpha(DNODES-1));
     u(DNODES) = g(DNODES)/alpha(DNODES);
-    for k=1:DNODES-1
-        u(DNODES-k) = (g(DNODES-k) - c*u(DNODES-k))/alpha(DNODES-k);
+    for kn=1:DNODES-1
+        u(DNODES-kn) = (g(DNODES-kn) - c(DNODES-kn)*u(DNODES-kn+1))/alpha(DNODES-kn);
     end
     TIMEN = TIMEN + dt;
     uprev=u;
-    if (TIMEN+dt > TIMEND)
-        fprintf('Reducing dt from %g to %g for final iteration.\n',dt,TIMEND-TIMEN);
-        dt = TIMEND-TIMEN; %Make sure we end on TIMEND, and dont overshoot
-    end
-    if (ct == 10)
-        ct = 0;
-        hold on;
-        plot([0,x,L],[g0,u,gL]);
-    end
+%     if (TIMEN+dt > TIMEND)
+%         fprintf('Reducing dt from %g to %g for final iteration.\n',dt,TIMEND-TIMEN);
+%         dt = TIMEND-TIMEN; %Make sure we end on TIMEND, and dont overshoot
+%         CONST = D*dt/2/dx/dx; %Careful of makinig CONST too small
+%     end
 end
+
+figure(1);
+plot([0,x,L],[g0,u,gL]);
+figure(2);
+plot(x,exp(-D*k^2*TIMEN)*sin(k*x));
+
 fprintf('END OF SCRIPT REACHED.\n');
-
-
-
-
-
 
